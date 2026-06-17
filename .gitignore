@@ -1,0 +1,16 @@
+.env
+.env.local
+backend/.env
+
+# Ignore Python virtual environments anywhere in the project
+**/venv/
+venv/
+.venv/
+**/__pycache__/
+*.pyc
+
+# Ignore Frontend dependencies and build caches
+**/node_modules/
+node_modules/
+**/.next/
+.next/
