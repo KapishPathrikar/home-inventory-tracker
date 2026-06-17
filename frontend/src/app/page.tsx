@@ -201,14 +201,38 @@ export default function Home() {
     return Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   };
 
-  const getAverageLifespan = (productName: string) => {
+  const getAverageLifespanDays = (productName: string): number | null => {
     const historicalMatches = inventory.filter(
       item => item.status === "Consumed" && item.product_name.trim().toLowerCase() === productName.trim().toLowerCase()
     );
-    if (historicalMatches.length === 0) return "New Item";
+    if (historicalMatches.length === 0) return null;
     const totalDays = historicalMatches.reduce((acc, item) => acc + calculateDaysLasted(item.purchase_date, item.consumed_date), 0);
-    const average = Math.round(totalDays / historicalMatches.length);
+    return Math.round(totalDays / historicalMatches.length);
+  };
+
+  const getAverageLifespan = (productName: string) => {
+    const average = getAverageLifespanDays(productName);
+    if (average === null) return "New Item";
     return average === 0 ? "Same Day" : `${average} Days`;
+  };
+
+  const getTargetFinishDate = (purchaseDateStr: string, productName: string) => {
+    const avgDays = getAverageLifespanDays(productName);
+    if (avgDays === null) return { dateStr: "N/A", isOverdue: false };
+
+    const purchaseDate = new Date(purchaseDateStr);
+    purchaseDate.setDate(purchaseDate.getDate() + avgDays);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const targetClone = new Date(purchaseDate.getTime());
+    targetClone.setHours(0, 0, 0, 0);
+
+    return {
+      dateStr: purchaseDate.toISOString().split('T')[0],
+      isOverdue: targetClone <= today
+    };
   };
 
   const activeStock = inventory.filter(item => item.status === "Available");
@@ -357,66 +381,76 @@ export default function Home() {
                     <th className="p-4 text-center">Qty</th>
                     <th className="p-4">Price</th>
                     <th className="p-4 text-amber-400">Avg Lifespan</th>
+                    <th className="p-4 text-emerald-400">Finish By</th>
                     <th className="p-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700 text-sm block md:table-row-group">
-                  {activeStock.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-750/50 transition flex flex-col md:table-row p-4 md:p-0 border-b border-slate-700 md:border-b-0 space-y-2 md:space-y-0">
-                      <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
-                        <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Item Name</span>
-                        {editingId === item.id ? (
-                          <div className="flex items-center gap-2 w-full max-w-xs justify-end md:justify-start">
-                            <input
-                              type="text"
-                              value={editNameValue}
-                              onChange={(e) => setEditNameValue(e.target.value)}
-                              className="bg-slate-700 text-slate-100 px-2 py-1 rounded-lg border border-emerald-500 outline-none text-xs sm:text-sm w-full"
-                            />
-                            <button onClick={() => saveNameEdit(item.id!)} className="text-emerald-400 hover:text-emerald-300 shrink-0">
-                              <Check className="w-4 h-4" />
+                  {activeStock.map((item) => {
+                    const target = getTargetFinishDate(item.purchase_date, item.product_name);
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-750/50 transition flex flex-col md:table-row p-4 md:p-0 border-b border-slate-700 md:border-b-0 space-y-2 md:space-y-0">
+                        <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
+                          <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Item Name</span>
+                          {editingId === item.id ? (
+                            <div className="flex items-center gap-2 w-full max-w-xs justify-end md:justify-start">
+                              <input
+                                type="text"
+                                value={editNameValue}
+                                onChange={(e) => setEditNameValue(e.target.value)}
+                                className="bg-slate-700 text-slate-100 px-2 py-1 rounded-lg border border-emerald-500 outline-none text-xs sm:text-sm w-full"
+                              />
+                              <button onClick={() => saveNameEdit(item.id!)} className="text-emerald-400 hover:text-emerald-300 shrink-0">
+                                <Check className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-200 text-right md:text-left">{item.product_name}</span>
+                              <button onClick={() => startEditing(item.id!, item.product_name)} className="text-slate-400 hover:text-slate-200 transition p-1" title="Edit name">
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                        <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
+                          <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Bought On</span>
+                          <span className="font-mono text-xs text-slate-400">{item.purchase_date}</span>
+                        </td>
+                        <td className="md:p-4 flex justify-between items-center md:table-cell border-none md:text-center">
+                          <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Qty</span>
+                          <span className="font-mono">{item.quantity}</span>
+                        </td>
+                        <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
+                          <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Price</span>
+                          <span className="font-mono text-slate-300">₹{item.price}</span>
+                        </td>
+                        <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
+                          <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Avg Lifespan</span>
+                          <span className="font-semibold text-xs text-amber-400 font-mono">
+                            {getAverageLifespan(item.product_name)}
+                          </span>
+                        </td>
+                        <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
+                          <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Finish By</span>
+                          <span className={`font-mono font-semibold text-xs ${target.isOverdue ? "text-rose-400 animate-pulse" : "text-slate-300"}`}>
+                            {target.dateStr} {target.isOverdue && target.dateStr !== "N/A" ? "(Due)" : ""}
+                          </span>
+                        </td>
+                        <td className="md:p-4 flex justify-between md:justify-end items-center md:table-cell border-none pt-2 md:pt-0 border-t border-dashed border-slate-700/50 md:border-none">
+                          <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Actions</span>
+                          <div className="flex items-center gap-4">
+                            <button onClick={() => consumeItem(item.id!)} className="text-slate-400 hover:text-emerald-400 transition" title="Mark as Consumed">
+                              <CheckCircle className="w-5 h-5" />
+                            </button>
+                            <button onClick={() => deleteItem(item.id!)} className="text-slate-400 hover:text-rose-500 transition font-bold text-xl px-1" title="Delete Permanently">
+                              &times;
                             </button>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-slate-200 text-right md:text-left">{item.product_name}</span>
-                            <button onClick={() => startEditing(item.id!, item.product_name)} className="text-slate-400 hover:text-slate-200 transition p-1" title="Edit name">
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                      <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
-                        <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Bought On</span>
-                        <span className="font-mono text-xs text-slate-400">{item.purchase_date}</span>
-                      </td>
-                      <td className="md:p-4 flex justify-between items-center md:table-cell border-none md:text-center">
-                        <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Qty</span>
-                        <span className="font-mono">{item.quantity}</span>
-                      </td>
-                      <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
-                        <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Price</span>
-                        <span className="font-mono text-slate-300">₹{item.price}</span>
-                      </td>
-                      <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
-                        <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Avg Lifespan</span>
-                        <span className="font-semibold text-xs text-amber-400 font-mono">
-                          {getAverageLifespan(item.product_name)}
-                        </span>
-                      </td>
-                      <td className="md:p-4 flex justify-between md:justify-end items-center md:table-cell border-none pt-2 md:pt-0 border-t border-dashed border-slate-700/50 md:border-none">
-                        <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Actions</span>
-                        <div className="flex items-center gap-4">
-                          <button onClick={() => consumeItem(item.id!)} className="text-slate-400 hover:text-emerald-400 transition" title="Mark as Consumed">
-                            <CheckCircle className="w-5 h-5" />
-                          </button>
-                          <button onClick={() => deleteItem(item.id!)} className="text-slate-400 hover:text-rose-500 transition font-bold text-xl px-1" title="Delete Permanently">
-                            &times;
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
