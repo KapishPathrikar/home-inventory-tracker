@@ -426,14 +426,14 @@ export default function Home() {
                           <span className="font-mono text-slate-300">₹{item.price}</span>
                         </td>
                         <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
-                          <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Avg Lifespan</span>
+                          <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-400">Avg Lifespan</span>
                           <span className="font-semibold text-xs text-amber-400 font-mono">
                             {getAverageLifespan(item.product_name)}
                           </span>
                         </td>
                         <td className="md:p-4 flex justify-between items-center md:table-cell border-none">
                           <span className="md:hidden text-xs font-bold uppercase tracking-wider text-slate-500">Finish By</span>
-                          <span className={`font-mono font-semibold text-xs ${target.isOverdue ? "text-rose-400 animate-pulse" : "text-slate-300"}`}>
+                          <span className={`font-mono font-semibold text-xs ${target.isOverdue && target.dateStr !== "N/A" ? "text-rose-400 animate-pulse" : "text-slate-300"}`}>
                             {target.dateStr} {target.isOverdue && target.dateStr !== "N/A" ? "(Due)" : ""}
                           </span>
                         </td>
