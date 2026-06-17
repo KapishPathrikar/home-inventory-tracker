@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Camera, CheckCircle, ShoppingBag, Loader2, History, Edit2, Check, Plus, X } from 'lucide-react';
+import { Camera, CheckCircle, ShoppingBag, Loader2, History, Edit2, Check, Plus, X, Trash2 } from 'lucide-react';
 
 interface GroceryItem {
   id?: string;
@@ -140,6 +140,25 @@ export default function Home() {
     }
   };
 
+  const deleteAllItems = async () => {
+    if (!confirm("CRITICAL WARNING: Are you sure you want to permanently delete ALL active and consumed items? This action cannot be undone.")) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/delete-all`, { method: "DELETE" });
+      if (res.ok) {
+        setInventory([]);
+        alert("Inventory completely cleared.");
+      } else {
+        alert("Failed to clear inventory. Verify your backend endpoint.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error occurred while clearing inventory.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const startEditing = (id: string, currentName: string) => {
     setEditingId(id);
     setEditNameValue(currentName);
@@ -208,7 +227,19 @@ export default function Home() {
             <h1 className="text-xl md:text-2xl font-bold">Home Inventory</h1>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Delete All Button */}
+            {inventory.length > 0 && (
+              <button 
+                onClick={deleteAllItems}
+                disabled={loading}
+                className="flex items-center gap-2 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/30 text-rose-400 font-semibold px-4 py-2.5 rounded-xl transition text-sm disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Clear All</span>
+              </button>
+            )}
+
             {/* Type Manually Button */}
             <button 
               onClick={() => setShowManualForm(!showManualForm)}

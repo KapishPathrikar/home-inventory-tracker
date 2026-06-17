@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware # Import CORS
 from app.core.database import engine, Base, SessionLocal
 from app.models.models import User
 from app.api.inventory import router as inventory_router, MOCK_USER_ID
+from fastapi import APIRouter, HTTPException, status
 
 Base.metadata.create_all(bind=engine)
 

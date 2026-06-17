@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 from app.services.scanner import scan_receipt_image
 from app.core.database import get_db
@@ -51,7 +51,6 @@ def get_inventory(db: Session = Depends(get_db)):
     """
     Fetches all inventory items (both Available and Consumed) for tracking calculations.
     """
-    # Remove the .filter() constraint so we pull complete metrics
     items = db.query(InventoryItem).all()
     return items
 
@@ -70,6 +69,22 @@ def mark_as_consumed(item_id: uuid.UUID, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(item)
     return item
+
+@router.delete("/delete-all", status_code=status.HTTP_200_OK)
+def delete_all_inventory(db: Session = Depends(get_db)):
+    """
+    Permanently erases all inventory records (Active and Consumed) from the database.
+    """
+    try:
+        db.query(InventoryItem).delete()
+        db.commit()
+        return {"message": "All inventory items deleted successfully."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while clearing inventory: {str(e)}"
+        )
 
 @router.delete("/{item_id}")
 def delete_inventory_item(item_id: uuid.UUID, db: Session = Depends(get_db)):
